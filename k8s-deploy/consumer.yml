@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: central-hub
+spec:
+  selector:
+    matchLabels:
+      app: central-hub
+  template:
+    metadata:
+      labels:
+        app: central-hub
+    spec:
+      containers:
+      - name: central-hub
+        image: central-hub:0.3
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1"
+        ports:
+          - containerPort: 5000
+        env:
+        - name: KAFKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config-map
+              key: kafka

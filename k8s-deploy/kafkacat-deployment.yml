@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafkacat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafkacat
+      k8s-app: kube-dns
+  template:
+    metadata:
+      labels:
+        app: kafkacat
+        k8s-app: kube-dns
+    spec:
+      containers:
+        - name: kafkacat-container
+          image: edenhill/kafkacat:1.5.0
+          resources: {}
+          command:
+            - sh
+            - -c
+            - "exec tail -f /dev/null"

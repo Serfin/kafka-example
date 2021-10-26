@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: station
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: station
+  template:
+    metadata:
+      labels:
+        app: station
+    spec:
+      containers:
+      - name: station
+        image: station:0.6
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 5000
+        env:
+        - name: KAFKA_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: config-map
+              key: kafka
