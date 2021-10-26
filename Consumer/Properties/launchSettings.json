@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "Producer": {
+    "Consumer": {
         "commandName": "Project",
         "environmentVariables": {
             "ASPNETCORE_ENVIRONMENT": "Development",

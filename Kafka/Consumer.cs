@@ -58,10 +58,6 @@ namespace Kafka
         }
 
         private string GetKafkaHostEnv()
-        {
-            var value = Environment.GetEnvironmentVariable(ENV_KAFKA_HOST);
-            Console.WriteLine($"{ENV_KAFKA_HOST}={value}");
-            return value;
-        }
+            => Environment.GetEnvironmentVariable(ENV_KAFKA_HOST);
     }
 }

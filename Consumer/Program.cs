@@ -7,16 +7,12 @@ namespace CentralHub
     {
         public static async Task Main(string[] args)
         {
-#if DEBUG
-            Environment.SetEnvironmentVariable("KAFKA_HOST", "localhost:9091,localhost:9092,localhost:9093");
-#endif
-
-            CancellationTokenSource cts = new CancellationTokenSource();
+            Console.WriteLine($"[APP] KAFKA_HOST={Environment.GetEnvironmentVariable("KAFKA_HOST")}");
 
             new Consumer().Consume(
                 Topic.City_Current_Weather, 
                 async _ => await Task.CompletedTask,
-                cts.Token);
+                CancellationToken.None);
 
             await Task.Delay(-1);
         }
