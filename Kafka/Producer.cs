@@ -7,19 +7,16 @@ namespace Kafka
 {
     public class Producer
     {
-        private const string ENV_KAFKA_HOST = "KAFKA_HOST";
+        private readonly ProducerConfig _config;
+
+        public Producer(ProducerConfig config)
+        {
+            _config = config;
+        }
 
         public async Task ProduceAsync<T>(Topic topic, T data)
         {
-            var config = new ProducerConfig
-            {
-                BootstrapServers = GetKafkaHostEnv(),
-                ClientId = Dns.GetHostName(),
-                Partitioner = Partitioner.Random,
-                Acks = Acks.All
-            };
-
-            using var producer = new ProducerBuilder<Null, string>(config).Build();
+            using var producer = new ProducerBuilder<Null, string>(_config).Build();
             
             try
             {
@@ -32,7 +29,7 @@ namespace Kafka
                 Console.WriteLine($"[KAFKA] {delivery.Status} on partition [{delivery.TopicPartition.Partition.Value}] with offset " +
                     delivery.TopicPartitionOffset.Offset.Value);
             }
-            catch (ProduceException<Null, string> produceException)
+            catch (ProduceException<Ignore, string> produceException)
             {
                 Console.WriteLine($"[KAFKA] Delivery failed {produceException.Message}");
             }
@@ -41,8 +38,5 @@ namespace Kafka
                 Console.WriteLine(ex.Message);
             }
         }
-
-        private static string GetKafkaHostEnv() 
-            => Environment.GetEnvironmentVariable(ENV_KAFKA_HOST);
     }
 }
