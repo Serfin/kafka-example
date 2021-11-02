@@ -7,7 +7,7 @@ namespace WeatherStation
 {
 	public class Program
 	{
-		private static readonly ConcurrentDictionary<Topic, IProducer<Null, string>> _producerStore = new();
+		private static readonly ConcurrentDictionary<Topic, IProducer<Null, string>> _producers = new();
 
 		public static async Task Main(string[] args)
 		{
@@ -32,10 +32,10 @@ namespace WeatherStation
 			_ = Task.Run(async () =>
 			{
 				var semaphore = new SemaphoreSlim(3, 3);
-				var producer = _producerStore.GetOrAdd(topic,
-					_ => new ProducerBuilder<Null, string>(config)
-							.SetErrorHandler(HandleError)
-							.Build());
+				var producer = _producers.GetOrAdd(topic, _ => 
+					new ProducerBuilder<Null, string>(config)
+						.SetErrorHandler(HandleError)
+						.Build());
 
 				while (true)
 				{

@@ -9,7 +9,7 @@ namespace CentralHub
         private const string ENV_KAFKA_HOST = "KAFKA_HOST";
         private const string _consumerGroup = "-consumer_grp";
 
-        private static readonly ConcurrentDictionary<string, IConsumer<Null, string>> _consumerStore = new();
+        private static readonly ConcurrentDictionary<string, IConsumer<Null, string>> _consumers = new();
 
         public static async Task Main(string[] args)
         {
@@ -33,7 +33,7 @@ namespace CentralHub
             _ = Task.Run(async () =>
             {
                 var semaphore = new SemaphoreSlim(10, 10);
-                var consumer = _consumerStore.GetOrAdd(topicName, _ => 
+                var consumer = _consumers.GetOrAdd(topicName, _ => 
                     new ConsumerBuilder<Null, string>(config)
                         .SetErrorHandler(HandleError)
                         .Build());
@@ -54,6 +54,7 @@ namespace CentralHub
                         catch (ConsumeException consumeException)
                         {
                             Console.WriteLine($"Exception during consume {consumeException.Message}");
+                            // This message should go to DLQ
                         }
                         finally
                         {
@@ -69,12 +70,12 @@ namespace CentralHub
             if (error.IsLocalError)
             {
                 // For local error just log, client will try to recover
-                Console.WriteLine($"Consumer {consumer.Subscription.First()} error {error.Reason} code {error.Code}");
+                Console.WriteLine($"Consumer {consumer.Subscription.First()} \nError {error.Reason} \nCode {error.Code}");
                 return;
             }
 
             // Handle fatal errors
-            Console.WriteLine($"Consumer {consumer.Subscription.First()} fatal error {error.Reason} code {error.Code}");
+            Console.WriteLine($"Consumer {consumer.Subscription.First()} \nFatal error {error.Reason} \nCode {error.Code}");
         }
 
         public static async Task HandleMessage(ConsumeResult<Null, string> consumeResult)
