@@ -16,6 +16,7 @@ namespace CentralHub
             Environment.SetEnvironmentVariable("KAFKA_HOST", "localhost:9091,localhost:9092,localhost:9093");
 
             Consume(Topic.City_Current_Weather, async message => await HandleMessage(message), CancellationToken.None);
+            Consume(Topic.Test_Topic_2, async message => await HandleMessage(message), CancellationToken.None);
 
             await Task.Delay(-1);
         }
@@ -63,6 +64,17 @@ namespace CentralHub
                     });
                 }
             }, cancellationToken);
+        }
+
+        public static void Dispose()
+        {
+            foreach (var consumer in _consumers)
+            {
+                _consumers.Remove(consumer.Key, out _);
+
+                consumer.Value.Unsubscribe();
+                consumer.Value.Dispose();
+            }
         }
 
         private static void HandleError(IConsumer<Null, string> consumer, Error error)
