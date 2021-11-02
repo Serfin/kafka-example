@@ -3,8 +3,7 @@
     "Producer": {
         "commandName": "Project",
         "environmentVariables": {
-            "ASPNETCORE_ENVIRONMENT": "Development",
-            "KAFKA_HOST": "localhost:9091,localhost:9092,localhost:9093"
+            "ASPNETCORE_ENVIRONMENT": "Development"
         }
     }
   }

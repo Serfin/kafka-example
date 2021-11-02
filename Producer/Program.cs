@@ -1,77 +1,89 @@
-﻿using System.Text.Json;
+﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using Common;
 using Confluent.Kafka;
 
 namespace WeatherStation
 {
-    public class Program
-    {
-        public static async Task Main(string[] args)
-        {
-            Produce(Topic.City_Current_Weather, "DATA");
+	public class Program
+	{
+		private static readonly ConcurrentDictionary<Topic, IProducer<Null, string>> _producerStore = new();
 
-            await Task.Delay(-1);
-        }
+		public static async Task Main(string[] args)
+		{
+			Environment.SetEnvironmentVariable("KAFKA_HOST", "localhost:9091,localhost:9092,localhost:9093");
 
-        private static void Produce(Topic topic, string data)
-        {
-            var config = new ProducerConfig
-            {
-                BootstrapServers = Environment.GetEnvironmentVariable("KAFKA_HOST"),
-                Acks = Acks.All,
-                Partitioner = Partitioner.Random,
-                MessageTimeoutMs = 3_000
-            };
+			Produce(Topic.City_Current_Weather, "DATA");
 
-            DisplayPartitionsInfo(config);
+			await Task.Delay(-1);
+		}
 
-            _ = Task.Run(async () =>
-            {
-                using var producer = new ProducerBuilder<Null, string>(config).Build();
-                var semaphore = new SemaphoreSlim(1, 1);
+		private static void Produce(Topic topic, string data)
+		{
+			var config = new ProducerConfig
+			{
+				BootstrapServers = Environment.GetEnvironmentVariable("KAFKA_HOST"),
+				Acks = Acks.All,
+				MessageTimeoutMs = 3_000
+			};
 
-                while (true)
-                {
-                    await semaphore.WaitAsync();
+			DisplayPartitionsInfo(config);
 
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            var delivery = await producer.ProduceAsync(Topic.City_Current_Weather.GetTopicName(),
-                                new Message<Null, string>
-                                {
-                                    Value = JsonSerializer.Serialize("DATA")
-                                });
+			_ = Task.Run(async () =>
+			{
+				var semaphore = new SemaphoreSlim(3, 3);
+				var producer = _producerStore.GetOrAdd(topic,
+					_ => new ProducerBuilder<Null, string>(config)
+							.SetErrorHandler(HandleError)
+							.Build());
 
-                            Console.WriteLine($"[KAFKA] {delivery.Status} on partition [{delivery.TopicPartition.Partition.Value}] " +
-                                $"with offset " + delivery.TopicPartitionOffset.Offset.Value);
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine($"[KAFKA] Delivery failed {ex.Message}");
-                        }
-                        finally
-                        {
-                            semaphore.Release();
-                        }
-                    });
-                }
-            });
-        }
+				while (true)
+				{
+					await semaphore.WaitAsync();
 
-        private static void DisplayPartitionsInfo(ProducerConfig config)
-        {
-            using var admin = new AdminClientBuilder(config).Build();
-            var metadata = admin.GetMetadata(TimeSpan.FromSeconds(30));
+					_ = Task.Run(async () =>
+					{
+						try
+						{
+							var delivery = await producer.ProduceAsync(topic.GetTopicName(),
+								new Message<Null, string>
+								{
+									Value = JsonSerializer.Serialize(data)
+								});
 
-            var topic = metadata.Topics.FirstOrDefault(x => x.Topic == Topic.City_Current_Weather.GetTopicName());
-            topic.Partitions.ForEach(x =>
-            {
-                Console.WriteLine($"Partition {x.PartitionId} Replicas {x.Replicas.Length}");
-            });
+							Console.WriteLine($"[KAFKA] {delivery.Status} on partition [{delivery.Partition.Value}] " +
+								$"with offset " + delivery.Offset.Value);
+						}
+						catch (Exception ex)
+						{
+							Console.WriteLine($"[KAFKA] Delivery failed {ex.Message}");
+						}
+						finally
+						{
+							semaphore.Release();
+						}
+					});
+				}
+			});
+		}
 
-            Console.WriteLine();
-        }
-    }
+		private static void HandleError(IProducer<Null, string> producer, Error error)
+		{
+			Console.WriteLine($"Proucer {producer.Name} error {error.Reason} code {error.Code}");
+		}
+
+		private static void DisplayPartitionsInfo(ProducerConfig config)
+		{
+			using var admin = new AdminClientBuilder(config).Build();
+			var metadata = admin.GetMetadata(TimeSpan.FromSeconds(30));
+
+			var topic = metadata.Topics.FirstOrDefault(x => x.Topic == Topic.City_Current_Weather.GetTopicName());
+			topic.Partitions.ForEach(x =>
+			{
+				Console.WriteLine($"Partition {x.PartitionId} Replicas {x.Replicas.Length}");
+			});
+
+			Console.WriteLine();
+		}
+	}
 }
